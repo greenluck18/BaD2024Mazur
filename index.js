@@ -8,7 +8,7 @@ let maxNumber = -Infinity;
 let minNumber = Infinity;
 let sum = 0;
 let numbersCount = 0;
-let allNumbers = [];  // Для зберігання всіх чисел для обчислення медіани
+let allNumbers = []; 
 
 let longestIncreasingSequence = [];
 let currentIncreasingSequence = [];
@@ -36,15 +36,15 @@ function updateSequences(num) {
   }
 }
 
-function readFileWithChunkSize(chunkSize, callback) {
+async function readFileWithChunkSize(chunkSize) {
   const readStream = fs.createReadStream(filePath, { highWaterMark: chunkSize });
-  let leftover = ''; 
+  let leftover = '';
 
-  readStream.on('data', (chunk) => {
+  for await (const chunk of readStream) {
     let chunkStr = leftover + chunk.toString();
-    const numbersStr = chunkStr.split('\n'); // Розділяємо за комами і пробілами/новими рядками
+    const numbersStr = chunkStr.split('\n');
 
-    leftover = numbersStr.pop(); // Залишаємо останній елемент в буфері
+    leftover = numbersStr.pop();
     numbersCount += numbersStr.length;
 
     const numbers = numbersStr.map(Number).filter(num => !isNaN(num));
@@ -54,33 +54,26 @@ function readFileWithChunkSize(chunkSize, callback) {
       sum += num;
       allNumbers.push(num);
       updateSequences(num);
-      
     }
-  });
+  }
 
-  readStream.on('end', () => {
-    if (leftover) {
-      const leftoverNumber = Number(leftover);
-      if (!isNaN(leftoverNumber)) {
-        if (leftoverNumber > maxNumber) maxNumber = leftoverNumber;
-        if (leftoverNumber < minNumber) minNumber = leftoverNumber;
-        sum += leftoverNumber;
-        allNumbers.push(leftoverNumber); 
-        updateSequences(leftoverNumber);
-        numbersCount += 1;
-      }
+  if (leftover) {
+    const leftoverNumber = Number(leftover);
+    if (!isNaN(leftoverNumber)) {
+      if (leftoverNumber > maxNumber) maxNumber = leftoverNumber;
+      if (leftoverNumber < minNumber) minNumber = leftoverNumber;
+      sum += leftoverNumber;
+      allNumbers.push(leftoverNumber);
+      updateSequences(leftoverNumber);
+      numbersCount += 1;
     }
-    callback();
-  });
-
-  readStream.on('error', (err) => {
-    console.error('Error reading file:', err);
-  });
+  }
 }
 
-const start64 = performance.now();
+(async () => {
+  const start64 = performance.now();
 
-readFileWithChunkSize(64 * 1024, () => {
+  await readFileWithChunkSize(64 * 1024);
 
   const mean = sum / numbersCount;
   let median;
@@ -111,4 +104,4 @@ readFileWithChunkSize(64 * 1024, () => {
   const end64 = performance.now();
   console.log(`\n### Time for processing 64 kB chunks ${((end64 - start64) / 1000).toFixed(3)} seconds ###`);
   console.log(`\n### Script ended ###`);
-});
+})();
